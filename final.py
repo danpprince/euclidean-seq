@@ -6,6 +6,8 @@ from pykka import ActorRegistry
 import rtmidi.midiutil as midiutil
 from threading import Timer
 import time
+import Tkinter as tk
+from traceback import print_tb
 
 # Where n is the number of steps in the rhythm and k is the number
 # of "ones" in the rhythm
@@ -70,7 +72,7 @@ class NoteActor(pykka.ThreadingActor):
 
     def on_failure(self, exception_type, exception_value, traceback):
         print('NoteActor error: {}; {}'.format(exception_type, exception_value))
-        print(traceback)
+        print_tb(traceback)
 
     def on_receive(self, msg):
         if msg['from'] == 'timing' and msg['type'] == 'reset': 
@@ -78,7 +80,7 @@ class NoteActor(pykka.ThreadingActor):
         elif msg['from'] == 'main' and msg['type'] == 'config':
             # Reset the Euclidean rhythm at seq_num using the parameters k and n
             print('Modifying sequence {}: k={}, n={}'
-                  .format(msg['seq_num']), msg['k'], msg['n'])
+                  .format(msg['seq_num'], msg['k'], msg['n']))
             self.seq[msg['seq_num']] = [euclidean_rhythm(msg['k'], msg['n']), 
                                         self.seq[msg['seq_num']][1]]
         elif msg['from'] == 'main':
@@ -87,22 +89,50 @@ class NoteActor(pykka.ThreadingActor):
             map(self.send, self.seq)
 
 if __name__ == '__main__':
+    # Set up TimingActor and NoteActor
     timing = TimingActor.start()
     note   = NoteActor  .start()
 
     timing.tell({'from': 'main', 'type': 'config', 
                  'bpm': 120, 'target': note.actor_urn})
 
-    # Keep the main thread alive until keyboard exception
-    try: 
-        while True: 
-            time.sleep(0.1)
-            s = raw_input('Configure sequence num, k, n: ')
-            s_num, k, n = map(int, s.split())
-            print(s_num, k, n)
-            note.tell({'from': 'main', 'type': 'config', 
-                       'seq_num': s_num, 'k': k, 'n': n})
-    except ValueError:
-        print('Error in configuration string')
-    except:
-        timing.stop(); note.stop(); exit()
+    # Set up tk GUI
+    root = tk.Tk()
+
+    for idx in range(4):
+        frame = tk.Frame(root, borderwidth=1, padx=5, relief=tk.RIDGE)
+        seq_label = tk.Label(frame, text='Sequence '+str(idx))
+        k_label   = tk.Label(frame, text='k:')
+        k_entry   = tk.Entry(frame, width=5)
+        n_label   = tk.Label(frame, text='n:')
+        n_entry   = tk.Entry(frame, width=5)
+        start_b   = tk.Button(frame, text='Start')
+
+        # Capture the current sequence index, sequence k Entry object,
+        # and sequence n Entry object with a closure in order to keep
+        # references to them in the callback for this start button
+        def make_callback(seq_idx, seq_k, seq_n):
+            def cb(): 
+                # Send a message to the NoteActor with the info
+                # from this sequence's config frame
+                note.tell({'from': 'main', 'type': 'config', 
+                           'seq_num': seq_idx, 
+                           'k': int(seq_k.get()), 
+                           'n': int(seq_n.get())})
+            return cb
+
+        start_b.config(command=make_callback(idx, k_entry, n_entry))
+
+        seq_label.grid(row=0, column=0, columnspan=2)
+        k_label  .grid(row=1, column=0, padx=5)
+        n_label  .grid(row=2, column=0, padx=5)
+        k_entry  .grid(row=1, column=1)
+        n_entry  .grid(row=2, column=1)
+        start_b  .grid(row=3, column=0, pady=5, columnspan=2)
+
+        frame.grid(row=0, column=idx)
+
+    root.mainloop()
+
+    # End TimingActor and NoteActor after tk's main loop ends
+    timing.stop(); note.stop(); exit()
