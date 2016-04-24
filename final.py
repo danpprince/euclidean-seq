@@ -69,10 +69,13 @@ class NoteActor(pykka.ThreadingActor):
             self.gui_target.tell({'from': 'note', 'type': 'play', 
                                   'seq_num': s['i']})
             self.midi_out.send_message([144, s['n'], 100])
-            Timer(0.05, self.note_off, args=[s['n']]).start()
+            Timer(0.05, self.note_off, args=[s['n'], s['i']]).start()
 
-    def note_off(self, note_num):
+    def note_off(self, note_num, seq_num):
         self.midi_out.send_message([144, note_num, 0])
+        if not self.mutes[seq_num]:
+            self.gui_target.tell({'from': 'note', 'type': 'stop', 
+                                  'seq_num': seq_num})
 
     def on_failure(self, exception_type, exception_value, traceback):
         print('NoteActor error: {}; {}'.format(exception_type, exception_value))
@@ -149,7 +152,6 @@ class GuiActor(pykka.ThreadingActor):
 
     def show_playing(self, widgets):
         map(lambda w: w.config(bg='green'), widgets)
-        Timer(0.075, self.display_off, args=[widgets]).start()
 
     def show_muted(self, widgets):
         map(lambda w: w.config(bg='red'), widgets)
@@ -164,6 +166,8 @@ class GuiActor(pykka.ThreadingActor):
     def on_receive(self, msg):
         if msg['from'] == 'note' and msg['type'] == 'play':
             self.show_playing(self.widgets[msg['seq_num']])
+        elif msg['from'] == 'note' and msg['type'] == 'stop':
+            self.display_off(self.widgets[msg['seq_num']])
         elif msg['from'] == 'note' and msg['type'] == 'mute':
             if msg['muted']:
                 self.show_muted(self.widgets[msg['seq_num']])
