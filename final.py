@@ -59,7 +59,8 @@ class NoteActor(pykka.ThreadingActor):
                     {'i': 1, 'r': euclidean_rhythm(0,0), 'n': 61}, 
                     {'i': 2, 'r': euclidean_rhythm(0,0), 'n': 62}, 
                     {'i': 3, 'r': euclidean_rhythm(0,0), 'n': 63},
-                    {'i': 4, 'r': euclidean_rhythm(0,0), 'n': 64}]
+                    {'i': 4, 'r': euclidean_rhythm(0,0), 'n': 64},
+                    {'i': 5, 'r': euclidean_rhythm(0,0), 'n': 65}]
 
     def send(self, s):
         if next(s['r']):
@@ -114,7 +115,7 @@ if __name__ == '__main__':
     root = tk.Tk()
     widgets = []
 
-    for idx in range(4):
+    for idx in range(6):
         frame = tk.Frame(root, borderwidth=1, padx=5, relief=tk.RIDGE)
         seq_label = tk.Label (frame, text='Sequence '+str(idx))
         k_label   = tk.Label (frame, text='k:')
