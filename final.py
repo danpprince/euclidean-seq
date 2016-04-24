@@ -66,7 +66,8 @@ class NoteActor(pykka.ThreadingActor):
 
     def send(self, s):
         if next(s['r']) and not self.mutes[s['i']]:
-            self.gui_target.tell({'from': 'note', 'seq_num': s['i']})
+            self.gui_target.tell({'from': 'note', 'type': 'play', 
+                                  'seq_num': s['i']})
             self.midi_out.send_message([144, s['n'], 100])
             Timer(0.05, self.note_off, args=[s['n']]).start()
 
@@ -89,6 +90,9 @@ class NoteActor(pykka.ThreadingActor):
                                         'n': self.seq[msg['seq_num']]['n']}
         elif msg['from'] == 'gui' and msg['type'] == 'seq-mute':
             self.mutes[msg['seq_num']] = not self.mutes[msg['seq_num']]
+            self.gui_target.tell({'from': 'note', 'type': 'mute', 
+                                  'seq_num': msg['seq_num'], 
+                                  'muted': self.mutes[msg['seq_num']]})
         elif msg['from'] == 'timing' and msg['type'] == 'tick': 
             map(self.send, self.seq)
 
@@ -143,11 +147,14 @@ class GuiActor(pykka.ThreadingActor):
 
             self.widgets.append([frame, seq_label, k_label, n_label])
 
-    def flash(self, widgets):
+    def show_playing(self, widgets):
         map(lambda w: w.config(bg='green'), widgets)
-        Timer(0.075, self.flash_off, args=[widgets]).start()
+        Timer(0.075, self.display_off, args=[widgets]).start()
 
-    def flash_off(self, widgets):
+    def show_muted(self, widgets):
+        map(lambda w: w.config(bg='red'), widgets)
+
+    def display_off(self, widgets):
         map(lambda w: w.config(bg='SystemButtonFace'), widgets)
 
     def on_failure(self, exception_type, exception_value, traceback):
@@ -155,8 +162,13 @@ class GuiActor(pykka.ThreadingActor):
         print_tb(traceback)
 
     def on_receive(self, msg):
-        if msg['from'] == 'note':
-            self.flash(self.widgets[msg['seq_num']])
+        if msg['from'] == 'note' and msg['type'] == 'play':
+            self.show_playing(self.widgets[msg['seq_num']])
+        elif msg['from'] == 'note' and msg['type'] == 'mute':
+            if msg['muted']:
+                self.show_muted(self.widgets[msg['seq_num']])
+            else:
+                self.display_off(self.widgets[msg['seq_num']])
 
 if __name__ == '__main__':
     root = tk.Tk()
