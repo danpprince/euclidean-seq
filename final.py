@@ -97,9 +97,10 @@ class GuiActor(pykka.ThreadingActor):
         # Set up tk GUI
         # Create each sequencer frame
         note_actor = ActorRegistry.get_by_urn(note_actor_urn)
+        seq_names = ['Kick', 'Snare', 'Closed HiHat', 'Open HiHat', 'Clave', 'Cowbell']
         for idx in range(6):
             frame = tk.Frame(root, borderwidth=1, padx=5, relief=tk.RIDGE)
-            seq_label = tk.Label (frame, text='Sequence '+str(idx))
+            seq_label = tk.Label (frame, text=seq_names[idx])
             k_label   = tk.Label (frame, text='k:')
             k_entry   = tk.Entry (frame, width=5)
             n_label   = tk.Label (frame, text='n:')
@@ -120,12 +121,11 @@ class GuiActor(pykka.ThreadingActor):
             start_b.config(command=make_start_cb(idx, k_entry, n_entry))
 
             seq_label.grid(row=0, column=0, columnspan=2)
-            seq_name .grid(row=1, column=0, columnspan=2)
-            k_label  .grid(row=2, column=0, padx=5)
-            n_label  .grid(row=3, column=0, padx=5)
-            k_entry  .grid(row=2, column=1)
-            n_entry  .grid(row=3, column=1)
-            start_b  .grid(row=4, column=0, pady=5, columnspan=2)
+            k_label  .grid(row=1, column=0, padx=5)
+            n_label  .grid(row=2, column=0, padx=5)
+            k_entry  .grid(row=1, column=1)
+            n_entry  .grid(row=2, column=1)
+            start_b  .grid(row=3, column=0, pady=5, columnspan=2)
 
             frame.grid(row=0, column=idx)
 
