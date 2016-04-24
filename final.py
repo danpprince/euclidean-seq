@@ -89,11 +89,47 @@ class NoteActor(pykka.ThreadingActor):
             map(self.send, self.seq)
 
 class GuiActor(pykka.ThreadingActor):
-    def __init__(self, root, widgets):
+    def __init__(self, root, note_actor_urn):
         # Make this thread a daemon so it ends when the main thread exits
         super(GuiActor, self).__init__(use_daemon_thread=True)
-        self.root    = root
-        self.widgets = widgets
+        self.widgets = []
+
+        # Set up tk GUI
+        # Create each sequencer frame
+        note_actor = ActorRegistry.get_by_urn(note_actor_urn)
+        for idx in range(6):
+            frame = tk.Frame(root, borderwidth=1, padx=5, relief=tk.RIDGE)
+            seq_label = tk.Label (frame, text='Sequence '+str(idx))
+            k_label   = tk.Label (frame, text='k:')
+            k_entry   = tk.Entry (frame, width=5)
+            n_label   = tk.Label (frame, text='n:')
+            n_entry   = tk.Entry (frame, width=5)
+            start_b   = tk.Button(frame, text='Start')
+
+            # Capture the current sequence index, sequence k Entry object,
+            # and sequence n Entry object with a closure in order to keep
+            # references to them in the callback for this start button
+            def make_start_cb(seq_idx, seq_k, seq_n):
+                # Send a message to the NoteActor with the info
+                # from this sequence's config frame
+                return lambda: note_actor.tell({'from': 'main', 'type': 'seq-config', 
+                                                'seq_num': seq_idx, 
+                                                'k': int(seq_k.get()), 
+                                                'n': int(seq_n.get())})
+
+            start_b.config(command=make_start_cb(idx, k_entry, n_entry))
+
+            seq_label.grid(row=0, column=0, columnspan=2)
+            seq_name .grid(row=1, column=0, columnspan=2)
+            k_label  .grid(row=2, column=0, padx=5)
+            n_label  .grid(row=3, column=0, padx=5)
+            k_entry  .grid(row=2, column=1)
+            n_entry  .grid(row=3, column=1)
+            start_b  .grid(row=4, column=0, pady=5, columnspan=2)
+
+            frame.grid(row=0, column=idx)
+
+            self.widgets.append([frame, seq_label, k_label, n_label])
 
     def flash(self, widgets):
         map(lambda w: w.config(bg='green'), widgets)
@@ -111,56 +147,17 @@ class GuiActor(pykka.ThreadingActor):
             self.flash(self.widgets[msg['seq_num']])
 
 if __name__ == '__main__':
-    # Set up tk GUI
     root = tk.Tk()
-    widgets = []
-
-    for idx in range(6):
-        frame = tk.Frame(root, borderwidth=1, padx=5, relief=tk.RIDGE)
-        seq_label = tk.Label (frame, text='Sequence '+str(idx))
-        k_label   = tk.Label (frame, text='k:')
-        k_entry   = tk.Entry (frame, width=5)
-        n_label   = tk.Label (frame, text='n:')
-        n_entry   = tk.Entry (frame, width=5)
-        start_b   = tk.Button(frame, text='Start')
-
-        # Capture the current sequence index, sequence k Entry object,
-        # and sequence n Entry object with a closure in order to keep
-        # references to them in the callback for this start button
-        def make_start_cb(seq_idx, seq_k, seq_n):
-            # Send a message to the NoteActor with the info
-            # from this sequence's config frame
-            return lambda: note_actor.tell({'from': 'main', 'type': 'seq-config', 
-                                            'seq_num': seq_idx, 
-                                            'k': int(seq_k.get()), 
-                                            'n': int(seq_n.get())})
-
-        start_b.config(command=make_start_cb(idx, k_entry, n_entry))
-
-        seq_label.grid(row=0, column=0, columnspan=2)
-        k_label  .grid(row=1, column=0, padx=5)
-        n_label  .grid(row=2, column=0, padx=5)
-        k_entry  .grid(row=1, column=1)
-        n_entry  .grid(row=2, column=1)
-        start_b  .grid(row=3, column=0, pady=5, columnspan=2)
-
-        frame.grid(row=0, column=idx)
-
-        widgets.append([frame, seq_label, k_label, n_label])
-
 
     # Set up Actors
     timing_actor = TimingActor.start()
     note_actor   = NoteActor  .start()
-    gui_actor    = GuiActor   .start(root, widgets)
+    gui_actor    = GuiActor   .start(root, note_actor.actor_urn)
 
-    timing_actor.tell({'from': 'main', 'type': 'config', 'bpm': 111, 
+    timing_actor.tell({'from': 'main', 'type': 'config', 'bpm': 120, 
                        'target': note_actor.actor_urn})
-
-    note_actor.tell({'from': 'main', 'type': 'config',
-                     'gui_target' : gui_actor.actor_urn})
-
-    gui_actor.tell({'from': 'main'})
+    note_actor  .tell({'from': 'main', 'type': 'config',
+                       'gui_target' : gui_actor.actor_urn})
 
     root.mainloop()
 
