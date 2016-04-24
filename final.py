@@ -62,8 +62,10 @@ class NoteActor(pykka.ThreadingActor):
                     {'i': 4, 'r': euclidean_rhythm(0,0), 'n': 64},
                     {'i': 5, 'r': euclidean_rhythm(0,0), 'n': 65}]
 
+        self.mutes = [False]*len(self.seq)
+
     def send(self, s):
-        if next(s['r']):
+        if next(s['r']) and not self.mutes[s['i']]:
             self.gui_target.tell({'from': 'note', 'seq_num': s['i']})
             self.midi_out.send_message([144, s['n'], 100])
             Timer(0.05, self.note_off, args=[s['n']]).start()
@@ -78,13 +80,15 @@ class NoteActor(pykka.ThreadingActor):
     def on_receive(self, msg):
         if msg['from'] == 'main' and msg['type'] == 'config':
             self.gui_target = ActorRegistry.get_by_urn(msg['gui_target'])
-        elif msg['from'] == 'main' and msg['type'] == 'seq-config':
+        elif msg['from'] == 'gui' and msg['type'] == 'seq-config':
             # Reset the Euclidean rhythm at seq_num using the parameters k and n
             print('Modifying sequence {}: k={}, n={}'
                   .format(msg['seq_num'], msg['k'], msg['n']))
             self.seq[msg['seq_num']] = {'i': msg['seq_num'],
                                         'r': euclidean_rhythm(msg['k'], msg['n']), 
                                         'n': self.seq[msg['seq_num']]['n']}
+        elif msg['from'] == 'gui' and msg['type'] == 'seq-mute':
+            self.mutes[msg['seq_num']] = not self.mutes[msg['seq_num']]
         elif msg['from'] == 'timing' and msg['type'] == 'tick': 
             map(self.send, self.seq)
 
@@ -106,6 +110,7 @@ class GuiActor(pykka.ThreadingActor):
             n_label   = tk.Label (frame, text='n:')
             n_entry   = tk.Entry (frame, width=5)
             start_b   = tk.Button(frame, text='Start')
+            mute_b    = tk.Button(frame, text='Mute')
 
             # Capture the current sequence index, sequence k Entry object,
             # and sequence n Entry object with a closure in order to keep
@@ -113,12 +118,18 @@ class GuiActor(pykka.ThreadingActor):
             def make_start_cb(seq_idx, seq_k, seq_n):
                 # Send a message to the NoteActor with the info
                 # from this sequence's config frame
-                return lambda: note_actor.tell({'from': 'main', 'type': 'seq-config', 
+                return lambda: note_actor.tell({'from': 'gui', 'type': 'seq-config', 
                                                 'seq_num': seq_idx, 
                                                 'k': int(seq_k.get()), 
                                                 'n': int(seq_n.get())})
-
             start_b.config(command=make_start_cb(idx, k_entry, n_entry))
+
+            # Capture the current sequence index, with a closure to use them
+            # in a callback for the mute button
+            def make_mute_cb(seq_idx):
+                return lambda: note_actor.tell({'from': 'gui', 'type': 'seq-mute', 
+                                                'seq_num': seq_idx})
+            mute_b.config(command=make_mute_cb(idx))
 
             seq_label.grid(row=0, column=0, columnspan=2)
             k_label  .grid(row=1, column=0, padx=5)
@@ -126,6 +137,7 @@ class GuiActor(pykka.ThreadingActor):
             k_entry  .grid(row=1, column=1)
             n_entry  .grid(row=2, column=1)
             start_b  .grid(row=3, column=0, pady=5, columnspan=2)
+            mute_b   .grid(row=4, column=0, pady=5, columnspan=2)
 
             frame.grid(row=0, column=idx)
 
