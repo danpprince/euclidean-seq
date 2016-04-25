@@ -14,11 +14,11 @@ class TimingActor(pykka.ThreadingActor):
         super(TimingActor, self).__init__(use_daemon_thread=True)
 
     def tick(self, count):
-        self.target.tell({'from': 'timing', 'type': 'tick'})
+        self.target.tell({'type': 'tick'})
         Timer(self.period, self.tick, args=[count+1]).start()
 
     def on_receive(self, msg):
-        if msg['from'] == 'main' and msg['type'] == 'config':
+        if msg['type'] == 'config':
             # Set the sixteenth note period for this Actor
             self.period = 1.0/msg['bpm']*60.0 / 4.0
 
@@ -45,31 +45,29 @@ class NoteActor(pykka.ThreadingActor):
 
     def send(self, s):
         if next(s['r']) and not self.mutes[s['i']]:
-            self.gui_target.tell({'from': 'note', 'type': 'play', 
-                                  'seq_num': s['i']})
+            self.gui_target.tell({'type': 'play', 'seq_num': s['i']})
             self.midi_out.send_message([144, s['n'], 100])
             Timer(0.05, self.note_off, args=[s['n'], s['i']]).start()
 
     def note_off(self, note_num, seq_num):
         self.midi_out.send_message([144, note_num, 0])
         if not self.mutes[seq_num]:
-            self.gui_target.tell({'from': 'note', 'type': 'stop', 
-                                  'seq_num': seq_num})
+            self.gui_target.tell({'type': 'stop', 'seq_num': seq_num})
 
     def on_receive(self, msg):
-        if msg['from'] == 'main' and msg['type'] == 'config':
+        if msg['type'] == 'config':
             self.gui_target = ActorRegistry.get_by_urn(msg['gui_target'])
-        elif msg['from'] == 'gui' and msg['type'] == 'seq-config':
+        elif msg['type'] == 'seq-config':
             # Reset the Euclidean rhythm at seq_num using the parameters k and n
             self.seq[msg['seq_num']] = {'i': msg['seq_num'],
                                         'r': euclidean_rhythm(msg['k'], msg['n']), 
                                         'n': self.seq[msg['seq_num']]['n']}
-        elif msg['from'] == 'gui' and msg['type'] == 'seq-mute':
+        elif msg['type'] == 'seq-mute':
             self.mutes[msg['seq_num']] = not self.mutes[msg['seq_num']]
-            self.gui_target.tell({'from': 'note', 'type': 'mute', 
+            self.gui_target.tell({'type': 'mute', 
                                   'seq_num': msg['seq_num'], 
                                   'muted': self.mutes[msg['seq_num']]})
-        elif msg['from'] == 'timing' and msg['type'] == 'tick': 
+        elif msg['type'] == 'tick': 
             map(self.send, self.seq)
 
 class GuiActor(pykka.ThreadingActor):
@@ -98,7 +96,7 @@ class GuiActor(pykka.ThreadingActor):
             def make_start_cb(seq_idx, seq_k, seq_n):
                 # Send a message to the NoteActor with the info
                 # from this sequence's config frame
-                return lambda: note_actor.tell({'from': 'gui', 'type': 'seq-config', 
+                return lambda: note_actor.tell({'type': 'seq-config', 
                                                 'seq_num': seq_idx, 
                                                 'k': int(seq_k.get()), 
                                                 'n': int(seq_n.get())})
@@ -107,7 +105,7 @@ class GuiActor(pykka.ThreadingActor):
             # Capture the current sequence index, with a closure to use them
             # in a callback for the mute button
             def make_mute_cb(seq_idx):
-                return lambda: note_actor.tell({'from': 'gui', 'type': 'seq-mute', 
+                return lambda: note_actor.tell({'type': 'seq-mute', 
                                                 'seq_num': seq_idx})
             mute_b.config(command=make_mute_cb(idx))
 
@@ -132,11 +130,11 @@ class GuiActor(pykka.ThreadingActor):
         map(lambda w: w.config(bg='SystemButtonFace'), widgets)
 
     def on_receive(self, msg):
-        if msg['from'] == 'note' and msg['type'] == 'play':
+        if msg['type'] == 'play':
             self.show_playing(self.widgets[msg['seq_num']])
-        elif msg['from'] == 'note' and msg['type'] == 'stop':
+        elif msg['type'] == 'stop':
             self.display_off(self.widgets[msg['seq_num']])
-        elif msg['from'] == 'note' and msg['type'] == 'mute':
+        elif msg['type'] == 'mute':
             if msg['muted']:
                 self.show_muted(self.widgets[msg['seq_num']])
             else:
