@@ -6,6 +6,9 @@ from actors import TimingActor, NoteActor, GuiActor
 
 if __name__ == '__main__':
     root = tk.Tk()
+    root.wm_title('Euclidean sequencer')
+    root.wm_resizable(0,0)
+    root.iconbitmap('favicon.ico')
 
     # Set up Actors
     timing_actor = TimingActor.start()

@@ -81,7 +81,7 @@ class GuiActor(pykka.ThreadingActor):
         # Set up tk GUI
         # Create each sequencer frame
         note_actor = ActorRegistry.get_by_urn(note_actor_urn)
-        seq_names = ['Kick', 'Snare', 'Closed HiHat', 'Open HiHat', 'Clave', 'Cowbell']
+        seq_names = ['Kick', 'Snare', 'Cl. HiHat', 'Op. HiHat', 'Clave', 'Cowbell']
         for idx in range(6):
             frame = tk.Frame(root, borderwidth=1, padx=5, relief=tk.RIDGE)
             seq_label = tk.Label (frame, text=seq_names[idx])
@@ -89,8 +89,8 @@ class GuiActor(pykka.ThreadingActor):
             k_entry   = tk.Entry (frame, width=5)
             n_label   = tk.Label (frame, text='n:')
             n_entry   = tk.Entry (frame, width=5)
-            start_b   = tk.Button(frame, text='Start')
-            mute_b    = tk.Button(frame, text='Mute')
+            start_b   = tk.Button(frame, width=7, text='Start')
+            mute_b    = tk.Button(frame, width=7, text='Mute')
 
             # Capture the current sequence index, sequence k Entry object,
             # and sequence n Entry object with a closure in order to keep
