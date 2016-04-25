@@ -12,10 +12,12 @@ class TimingActor(pykka.ThreadingActor):
     def __init__(self):
         # Make this thread a daemon so it ends when the main thread exits
         super(TimingActor, self).__init__(use_daemon_thread=True)
+        self.playing = False
 
     def tick(self, count):
-        self.target.tell({'type': 'tick'})
-        Timer(self.period, self.tick, args=[count+1]).start()
+        if self.playing:
+            self.target.tell({'type': 'tick'})
+            Timer(self.period, self.tick, args=[count+1]).start()
 
     def on_receive(self, msg):
         if msg['type'] == 'config':
@@ -25,6 +27,8 @@ class TimingActor(pykka.ThreadingActor):
             # Get NoteActor URN
             self.target = ActorRegistry.get_by_urn(msg['target'])
             self.tick(0)
+        elif msg['type'] == 'play': self.playing = True; self.tick(0)
+        elif msg['type'] == 'stop': self.playing = False
 
 class NoteActor(pykka.ThreadingActor):
     def __init__(self):
@@ -71,14 +75,31 @@ class NoteActor(pykka.ThreadingActor):
             map(self.send, self.seq)
 
 class GuiActor(pykka.ThreadingActor):
-    def __init__(self, root, note_actor_urn):
+    def __init__(self, root, timing_act_urn, note_act_urn):
         # Make this thread a daemon so it ends when the main thread exits
         super(GuiActor, self).__init__(use_daemon_thread=True)
         self.widgets = []
 
+        # Set up transport controls
+        timing_actor = ActorRegistry.get_by_urn(timing_act_urn)
+        def make_transport_cb(msg):
+            return lambda: timing_actor.tell({'type': msg})
+
+        frame = tk.Frame(root, padx=5)
+        play_b = tk.Button(frame, width=5, text='Play')
+        stop_b = tk.Button(frame, width=5, text='Stop')
+        play_b.config(command=make_transport_cb('play'))
+        stop_b.config(command=make_transport_cb('stop'))
+        # play_b.config(command=lambda: timing_actor.tell({'type': 'play'}))
+        # stop_b.config(command=lambda: timing_actor.tell({'type': 'stop'}))
+
+        play_b.grid(row=0, column=0, padx=10, pady=10)
+        stop_b.grid(row=1, column=0, padx=10, pady=10)
+        frame .grid(row=0, column=0)
+
         # Set up tk GUI
         # Create each sequencer frame
-        note_actor = ActorRegistry.get_by_urn(note_actor_urn)
+        note_actor = ActorRegistry.get_by_urn(note_act_urn)
         seq_names = ['Kick', 'Snare', 'Cl. HiHat', 'Op. HiHat', 'Clave', 'Cowbell']
         for idx in range(6):
             frame = tk.Frame(root, borderwidth=1, padx=5, relief=tk.RIDGE)
@@ -117,7 +138,7 @@ class GuiActor(pykka.ThreadingActor):
             start_b  .grid(row=3, column=0, pady=5, columnspan=2)
             mute_b   .grid(row=4, column=0, pady=5, columnspan=2)
 
-            frame.grid(row=0, column=idx)
+            frame.grid(row=0, column=idx+1)
             self.widgets.append([frame, seq_label, k_label, n_label])
 
     def show_playing(self, widgets):

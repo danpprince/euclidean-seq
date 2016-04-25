@@ -13,7 +13,9 @@ if __name__ == '__main__':
     # Set up Actors
     timing_actor = TimingActor.start()
     note_actor   = NoteActor  .start()
-    gui_actor    = GuiActor   .start(root, note_actor.actor_urn)
+    gui_actor    = GuiActor   .start(root, 
+                                     timing_actor.actor_urn, 
+                                     note_actor  .actor_urn)
 
     timing_actor.tell({'type': 'config', 'bpm': 120,
                        'target': note_actor.actor_urn})
