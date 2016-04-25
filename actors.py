@@ -1,30 +1,12 @@
-from itertools import cycle
+# Library imports
 import pykka
 from pykka import ActorRegistry
 import rtmidi.midiutil as midiutil
 from threading import Timer
-import time
 import Tkinter as tk
 
-# Where n is the number of steps in the rhythm and k is the number
-# of "ones" in the rhythm
-def euclidean_rhythm(k,n):
-    # If either parameter is zero, return a generator that always returns zero
-    if k == 0 or n == 0: return cycle([0])
-
-    # m is the number of "zeros" in the rhythm
-    m = n-k
-    zeros, ones = [m], [k]
-
-    def euclid(m,k,steps):
-        if k == 0 or zeros[0] == 0: 
-            return map(lambda x: x+[0]*(zeros[0]/ones[0]), steps)
-        else:      
-            zeros[0] = zeros[0]-k
-            return euclid(k,m%k,map(lambda x: x+[0], steps[:k]) + steps[k:])
-
-    return cycle(reduce(lambda x,y: x+y, 
-                 euclid(max(k,m), min(k,m), [[1]]*k)))
+# Project imports
+from euclid import euclidean_rhythm
 
 class TimingActor(pykka.ThreadingActor):
     def __init__(self):
@@ -160,21 +142,3 @@ class GuiActor(pykka.ThreadingActor):
             else:
                 self.display_off(self.widgets[msg['seq_num']])
 
-if __name__ == '__main__':
-    root = tk.Tk()
-
-    # Set up Actors
-    timing_actor = TimingActor.start()
-    note_actor   = NoteActor  .start()
-    gui_actor    = GuiActor   .start(root, note_actor.actor_urn)
-
-    timing_actor.tell({'from': 'main', 'type': 'config', 'bpm': 120, 
-                       'target': note_actor.actor_urn})
-    note_actor  .tell({'from': 'main', 'type': 'config',
-                       'gui_target' : gui_actor.actor_urn})
-
-    root.mainloop()
-
-    # End TimingActor and NoteActor after tk's main loop ends
-    gui_actor.stop(); note_actor.stop(); timing_actor.stop(); 
-    exit()
