@@ -45,14 +45,14 @@ class NoteActor(pykka.ThreadingActor):
 
     def send(self, s):
         if next(s['r']) and not self.mutes[s['i']]:
-            self.gui_target.tell({'type': 'play', 'seq_num': s['i']})
+            self.gui_target.tell({'type': 'show', 'seq_num': s['i']})
             self.midi_out.send_message([144, s['n'], 100])
             Timer(0.05, self.note_off, args=[s['n'], s['i']]).start()
 
     def note_off(self, note_num, seq_num):
         self.midi_out.send_message([144, note_num, 0])
         if not self.mutes[seq_num]:
-            self.gui_target.tell({'type': 'stop', 'seq_num': seq_num})
+            self.gui_target.tell({'type': 'unshow', 'seq_num': seq_num})
 
     def on_receive(self, msg):
         if msg['type'] == 'config':
@@ -64,7 +64,7 @@ class NoteActor(pykka.ThreadingActor):
                                         'n': self.seq[msg['seq_num']]['n']}
         elif msg['type'] == 'seq-mute':
             self.mutes[msg['seq_num']] = not self.mutes[msg['seq_num']]
-            self.gui_target.tell({'type': 'mute', 
+            self.gui_target.tell({'type': 'show-mute', 
                                   'seq_num': msg['seq_num'], 
                                   'muted': self.mutes[msg['seq_num']]})
         elif msg['type'] == 'tick': 
@@ -130,11 +130,11 @@ class GuiActor(pykka.ThreadingActor):
         map(lambda w: w.config(bg='SystemButtonFace'), widgets)
 
     def on_receive(self, msg):
-        if msg['type'] == 'play':
+        if msg['type'] == 'show':
             self.show_playing(self.widgets[msg['seq_num']])
-        elif msg['type'] == 'stop':
+        elif msg['type'] == 'unshow':
             self.display_off(self.widgets[msg['seq_num']])
-        elif msg['type'] == 'mute':
+        elif msg['type'] == 'show-mute':
             if msg['muted']:
                 self.show_muted(self.widgets[msg['seq_num']])
             else:
