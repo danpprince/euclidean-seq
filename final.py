@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from itertools import cycle
 import pykka
 from pykka import ActorRegistry
@@ -7,7 +5,6 @@ import rtmidi.midiutil as midiutil
 from threading import Timer
 import time
 import Tkinter as tk
-from traceback import print_tb
 
 # Where n is the number of steps in the rhythm and k is the number
 # of "ones" in the rhythm
@@ -77,17 +74,11 @@ class NoteActor(pykka.ThreadingActor):
             self.gui_target.tell({'from': 'note', 'type': 'stop', 
                                   'seq_num': seq_num})
 
-    def on_failure(self, exception_type, exception_value, traceback):
-        print('NoteActor error: {}; {}'.format(exception_type, exception_value))
-        print_tb(traceback)
-
     def on_receive(self, msg):
         if msg['from'] == 'main' and msg['type'] == 'config':
             self.gui_target = ActorRegistry.get_by_urn(msg['gui_target'])
         elif msg['from'] == 'gui' and msg['type'] == 'seq-config':
             # Reset the Euclidean rhythm at seq_num using the parameters k and n
-            print('Modifying sequence {}: k={}, n={}'
-                  .format(msg['seq_num'], msg['k'], msg['n']))
             self.seq[msg['seq_num']] = {'i': msg['seq_num'],
                                         'r': euclidean_rhythm(msg['k'], msg['n']), 
                                         'n': self.seq[msg['seq_num']]['n']}
@@ -147,7 +138,6 @@ class GuiActor(pykka.ThreadingActor):
             mute_b   .grid(row=4, column=0, pady=5, columnspan=2)
 
             frame.grid(row=0, column=idx)
-
             self.widgets.append([frame, seq_label, k_label, n_label])
 
     def show_playing(self, widgets):
@@ -158,10 +148,6 @@ class GuiActor(pykka.ThreadingActor):
 
     def display_off(self, widgets):
         map(lambda w: w.config(bg='SystemButtonFace'), widgets)
-
-    def on_failure(self, exception_type, exception_value, traceback):
-        print('GuiActor error: {}; {}'.format(exception_type, exception_value))
-        print_tb(traceback)
 
     def on_receive(self, msg):
         if msg['from'] == 'note' and msg['type'] == 'play':
