@@ -35,7 +35,7 @@ class NoteActor(pykka.ThreadingActor):
         # Make this thread a daemon so it ends when the main thread exits
         super(NoteActor, self).__init__(use_daemon_thread=True)
         self.midi_out, self.midi_out_name = midiutil.open_midiport(
-            port='loop', 
+            port='IAC', 
             type_='output')
 
         self.seq = [{'i': 0, 'r': euclidean_rhythm(0,0), 'n': 60}, 
