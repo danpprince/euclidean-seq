@@ -7,6 +7,7 @@ def euclidean_rhythm(k,n):
     # a generator that always returns zero
     if k == 0 or n == 0: return cycle([0])
 
+    m = n-k
     zeros, ones = [n-k], [k]
     def euclid(m,k,steps):
         if k == 0 or zeros[0] == 0: 
@@ -16,7 +17,5 @@ def euclidean_rhythm(k,n):
             return euclid(k, m % k, map(lambda x: x+[0], 
                           steps[:k]) + steps[k:])
 
-    return cycle(reduce(lambda x,y: x+y, 
-                        euclid(max(k,m), min(k,m), 
-                        [[1]]*k)))
+    return cycle(reduce(lambda x,y: x+y, euclid(max(k,m), min(k,m), [[1]]*k)))
 
