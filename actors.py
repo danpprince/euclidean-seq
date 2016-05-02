@@ -14,6 +14,10 @@ class TimingActor(pykka.ThreadingActor):
         super(TimingActor, self).__init__(use_daemon_thread=True)
         self.playing = False
 
+    def on_failure(self, exception_type, exception_value, traceback):
+        print('TimingActor error: {}; {}'.format(exception_type, exception_value))
+        print_tb(traceback)
+
     def tick(self, count):
         if self.playing:
             self.target.tell({'type': 'tick'})
@@ -46,6 +50,10 @@ class NoteActor(pykka.ThreadingActor):
                     {'i': 5, 'r': euclidean_rhythm(0,0), 'n': 65}]
 
         self.mutes = [False]*len(self.seq)
+
+    def on_failure(self, exception_type, exception_value, traceback):
+        print('NoteActor error: {}; {}'.format(exception_type, exception_value))
+        print_tb(traceback)
 
     def send(self, s):
         if next(s['r']) and not self.mutes[s['i']]:
@@ -90,8 +98,6 @@ class GuiActor(pykka.ThreadingActor):
         stop_b = tk.Button(frame, width=5, text='Stop')
         play_b.config(command=make_transport_cb('play'))
         stop_b.config(command=make_transport_cb('stop'))
-        # play_b.config(command=lambda: timing_actor.tell({'type': 'play'}))
-        # stop_b.config(command=lambda: timing_actor.tell({'type': 'stop'}))
 
         play_b.grid(row=0, column=0, padx=10, pady=10)
         stop_b.grid(row=1, column=0, padx=10, pady=10)
@@ -140,6 +146,10 @@ class GuiActor(pykka.ThreadingActor):
 
             frame.grid(row=0, column=idx+1)
             self.widgets.append([frame, seq_label, k_label, n_label])
+
+    def on_failure(self, exception_type, exception_value, traceback):
+        print('GuiActor error: {}; {}'.format(exception_type, exception_value))
+        print_tb(traceback)
 
     def show_playing(self, widgets):
         map(lambda w: w.config(bg='green'), widgets)
