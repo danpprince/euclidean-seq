@@ -1,0 +1,21 @@
+\begin{thebibliography}{1}
+
+\bibitem{henderson1976lazy}
+P.~Henderson and J.H. Morris~Jr.
+\newblock A lazy evaluator.
+\newblock In {\em Proceedings of the 3rd ACM SIGACT-SIGPLAN Symposium on
+  Principles on programming languages}, pages 95--103. ACM Press, 1976.
+
+\bibitem{karmani2009actor}
+R.K. Karmani, A.~Shali, and G.~Agha.
+\newblock Actor frameworks for the JVM platform: a comparative analysis.
+\newblock In {\em Proceedings of the 7th International Conference on Principles
+  and Practice of Programming in Java}, pages 11--20. ACM Press, 2009.
+
+\bibitem{toussaint2005euclidean}
+G.T. Toussaint. 
+\newblock The Euclidean algorithm generates traditional musical rhythms.
+\newblock In {\em Proceedings of BRIDGES: Mathematical Connections in Art,
+  Music and Science}, pages 47--56, 2005.
+
+\end{thebibliography}

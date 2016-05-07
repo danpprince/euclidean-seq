@@ -1,0 +1,2 @@
+Pykka==1.2.1
+python-rtmidi==0.5b1

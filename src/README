@@ -1,0 +1,15 @@
+Application created using Python 2.7.11 on OS X 10.11.3
+
+The Python module dependencies are described in requirements.txt and may be
+installed using the Python package manager pip using the following command:
+
+   pip install -r requirements.txt
+
+For more information on installing modules using pip, see the following link:
+https://pip.readthedocs.io/en/1.1/requirements.html
+
+Also note that this application does not generate sound on its own, but rather
+generates MIDI information to be used as the input to another application. An
+intermediate MIDI routing application is required, as well as a destination 
+application that accepts MIDI notes and triggers samples or synthesizers. Without 
+these accompanying MIDI applications, no actual drum sounds will be created.
